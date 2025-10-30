@@ -1,0 +1,50 @@
+name: Deploy to AWS EC2 (React + Django + MongoDB)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Copy project to EC2
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "."
+          target: "~/lms-project"
+
+      - name: Run deployment commands on EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            echo " Moving to project directory"
+            cd ~/lms-project
+
+            echo " Starting MongoDB..."
+            sudo systemctl start mongod
+
+            echo " Starting Backend..."
+            cd backend
+            python3 -m venv venv
+            source venv/bin/activate
+            pip install -r requirements.txt
+            nohup python manage.py runserver 0.0.0.0:8000 > backend.log 2>&1 &
+
+            echo " Starting Frontend..."
+            cd ../frontend
+            npm install
+            nohup npm start > frontend.log 2>&1 &
+
+            echo " All servers started successfully!"
