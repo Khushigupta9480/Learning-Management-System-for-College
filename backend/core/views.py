@@ -20,7 +20,7 @@ import traceback
 
 SECRET_KEY = settings.SECRET_KEY  # use env variable later
 
-
+#Register
 @csrf_exempt
 def register(request):
     if request.method == 'POST':
